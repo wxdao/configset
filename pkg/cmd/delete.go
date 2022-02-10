@@ -6,11 +6,13 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/wxdao/configset/pkg/configset"
+	"github.com/wxdao/configset/pkg/diffutil"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 func NewDeleteCmd(configFlags *genericclioptions.ConfigFlags) *cobra.Command {
 	dryRunFlag := false
+	diffFlag := false
 
 	cmd := &cobra.Command{
 		Use:          "delete",
@@ -21,6 +23,10 @@ func NewDeleteCmd(configFlags *genericclioptions.ConfigFlags) *cobra.Command {
 				return fmt.Errorf("must specify a config set name")
 			}
 			setName := args[0]
+
+			if diffFlag {
+				dryRunFlag = true
+			}
 
 			restConfig, err := configFlags.ToRESTConfig()
 			if err != nil {
@@ -59,12 +65,32 @@ func NewDeleteCmd(configFlags *genericclioptions.ConfigFlags) *cobra.Command {
 					log.Printf("%s: ns=%s name=%s apiVersion=%s kind=%s: %v", action, obj.GetNamespace(), obj.GetName(), apiVersion, gvk.Kind, err)
 				},
 			})
-			_ = res
-			return err
+			if err != nil {
+				return err
+			}
+
+			if diffFlag {
+				differ, err := diffutil.NewDiffer()
+				if err != nil {
+					return fmt.Errorf("failed to create differ: %v", err)
+				}
+				defer differ.Cleanup()
+
+				if err := configset.WriteObjectResultsToDiffer(res.ObjectResults, differ, ""); err != nil {
+					return fmt.Errorf("failed to write object results to differ: %v", err)
+				}
+
+				if err := differ.Run(diffProgram(), c.OutOrStdout(), c.ErrOrStderr()); err != nil {
+					return err
+				}
+			}
+
+			return nil
 		},
 	}
 
 	cmd.Flags().BoolVar(&dryRunFlag, "dry-run", false, "If true, submit server-side request without persisting the resource.")
+	cmd.Flags().BoolVar(&diffFlag, "diff", false, "If true, dry run and compares changes. Use 'KUBECTL_EXTERNAL_DIFF' to specify a custom differ, default being '"+defaultDiffProgram+"'.")
 
 	return cmd
 }
