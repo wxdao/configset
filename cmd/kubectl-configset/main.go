@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/pflag"
 	"github.com/wxdao/configset/pkg/cmd"
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
 func main() {
