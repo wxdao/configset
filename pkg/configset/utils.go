@@ -8,7 +8,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-func WriteObjectResultsToDiffer(results []ObjectResult, differ *diffutil.Differ, prefix string) error {
+func AddObjectResultsToDiffer(results []ObjectResult, differ *diffutil.Differ, prefix string) error {
 	filename := func(result ObjectResult) string {
 		obj := result.Live
 		if obj == nil {

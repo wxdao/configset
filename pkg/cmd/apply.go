@@ -111,7 +111,7 @@ func NewApplyCmd(configFlags *genericclioptions.ConfigFlags) *cobra.Command {
 				}
 				defer differ.Cleanup()
 
-				if err := configset.WriteObjectResultsToDiffer(res.ObjectResults, differ, ""); err != nil {
+				if err := configset.AddObjectResultsToDiffer(res.ObjectResults, differ, ""); err != nil {
 					return fmt.Errorf("failed to write object results to differ: %v", err)
 				}
 

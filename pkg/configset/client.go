@@ -67,6 +67,10 @@ type ObjectResult struct {
 	Updated Object
 }
 
+var (
+	ErrFailedToOperateSomeResources = fmt.Errorf("failed to opearate some resources")
+)
+
 // apply
 
 type ApplyOptions struct {
@@ -216,6 +220,11 @@ func (c *Client) Apply(ctx context.Context, name string, objs []Object, opt Appl
 			return res, fmt.Errorf("failed to update set info: %w", err)
 		}
 	}
+
+	if hasErrors {
+		return res, ErrFailedToOperateSomeResources
+	}
+
 	return res, nil
 }
 
@@ -288,6 +297,10 @@ func (c *Client) Delete(ctx context.Context, name string, opt DeleteOptions) (De
 		if err := c.store.DeleteSetInfo(ctx, name); err != nil {
 			return res, fmt.Errorf("failed to delete set info: %w", err)
 		}
+	}
+
+	if hasErrors {
+		return res, ErrFailedToOperateSomeResources
 	}
 
 	return res, nil
