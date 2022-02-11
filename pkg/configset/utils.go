@@ -8,7 +8,12 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-func AddObjectResultsToDiffer(results []ObjectResult, differ *diffutil.Differ, prefix string) error {
+type AddObjectResultsToDifferOptions struct {
+	Prefix             string
+	StripManagedFields bool
+}
+
+func AddObjectResultsToDiffer(results []ObjectResult, differ *diffutil.Differ, opt AddObjectResultsToDifferOptions) error {
 	filename := func(result ObjectResult) string {
 		obj := result.Live
 		if obj == nil {
@@ -19,7 +24,7 @@ func AddObjectResultsToDiffer(results []ObjectResult, differ *diffutil.Differ, p
 
 		return fmt.Sprintf(
 			"%s%s_%s_%s_%s_%s.yaml",
-			prefix,
+			opt.Prefix,
 			obj.GetNamespace(),
 			obj.GetName(),
 			gvk.Group,
@@ -35,11 +40,13 @@ func AddObjectResultsToDiffer(results []ObjectResult, differ *diffutil.Differ, p
 
 		if result.Live != nil {
 			obj := result.Live.DeepCopyObject()
-			ac, err := meta.Accessor(obj)
-			if err != nil {
-				return fmt.Errorf("failed to get accessor for object: %w", err)
+			if opt.StripManagedFields {
+				ac, err := meta.Accessor(obj)
+				if err != nil {
+					return fmt.Errorf("failed to get accessor for object: %w", err)
+				}
+				ac.SetManagedFields(nil)
 			}
-			ac.SetManagedFields(nil)
 
 			b, err := yaml.Marshal(obj)
 			if err != nil {
@@ -51,11 +58,13 @@ func AddObjectResultsToDiffer(results []ObjectResult, differ *diffutil.Differ, p
 		}
 		if result.Updated != nil {
 			obj := result.Updated.DeepCopyObject()
-			ac, err := meta.Accessor(obj)
-			if err != nil {
-				return fmt.Errorf("failed to get accessor for object: %w", err)
+			if opt.StripManagedFields {
+				ac, err := meta.Accessor(obj)
+				if err != nil {
+					return fmt.Errorf("failed to get accessor for object: %w", err)
+				}
+				ac.SetManagedFields(nil)
 			}
-			ac.SetManagedFields(nil)
 
 			b, err := yaml.Marshal(obj)
 			if err != nil {

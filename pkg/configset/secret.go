@@ -39,10 +39,6 @@ func NewSecretSetInfoStore(restConfig *rest.Config, namespace string) (*SecretSe
 		return nil, fmt.Errorf("failed to create k8s client: %w", err)
 	}
 
-	if namespace == "" {
-		namespace = "default"
-	}
-
 	return &SecretSetInfoStore{
 		kube:              kube,
 		namespace:         namespace,

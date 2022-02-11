@@ -29,20 +29,15 @@ type Client struct {
 	fieldOwner string
 }
 
-type ClientOptions struct {
-	RESTConfig *rest.Config
-	Store      SetInfoStore
-}
-
-func NewClient(opt ClientOptions) (*Client, error) {
-	kube, err := crclient.New(opt.RESTConfig, crclient.Options{})
+func NewClient(restConfig *rest.Config, store SetInfoStore) (*Client, error) {
+	kube, err := crclient.New(restConfig, crclient.Options{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create k8s client: %w", err)
 	}
 
 	return &Client{
 		kube:       kube,
-		store:      opt.Store,
+		store:      store,
 		fieldOwner: DefaultFieldOwner,
 	}, nil
 }

@@ -13,6 +13,7 @@ import (
 func NewDeleteCmd(configFlags *genericclioptions.ConfigFlags) *cobra.Command {
 	dryRunFlag := false
 	diffFlag := false
+	stripManagedFieldsFlag := false
 
 	cmd := &cobra.Command{
 		Use:          "delete",
@@ -43,10 +44,7 @@ func NewDeleteCmd(configFlags *genericclioptions.ConfigFlags) *cobra.Command {
 				return fmt.Errorf("failed to create store: %v", err)
 			}
 
-			cli, err := configset.NewClient(configset.ClientOptions{
-				RESTConfig: restConfig,
-				Store:      store,
-			})
+			cli, err := configset.NewClient(restConfig, store)
 			if err != nil {
 				return fmt.Errorf("failed to create configset client: %v", err)
 			}
@@ -77,7 +75,9 @@ func NewDeleteCmd(configFlags *genericclioptions.ConfigFlags) *cobra.Command {
 				}
 				defer differ.Cleanup()
 
-				if err := configset.AddObjectResultsToDiffer(res.ObjectResults, differ, ""); err != nil {
+				if err := configset.AddObjectResultsToDiffer(res.ObjectResults, differ, configset.AddObjectResultsToDifferOptions{
+					StripManagedFields: stripManagedFieldsFlag,
+				}); err != nil {
 					return fmt.Errorf("failed to write object results to differ: %v", err)
 				}
 
@@ -92,6 +92,7 @@ func NewDeleteCmd(configFlags *genericclioptions.ConfigFlags) *cobra.Command {
 
 	cmd.Flags().BoolVar(&dryRunFlag, "dry-run", false, "If true, submit server-side request without persisting the resource.")
 	cmd.Flags().BoolVar(&diffFlag, "diff", false, "If true, dry run and compares changes. Use 'KUBECTL_EXTERNAL_DIFF' to specify a custom differ, default being '"+defaultDiffProgram+"'.")
+	cmd.Flags().BoolVar(&stripManagedFieldsFlag, "strip-managed-fields", false, "If true, strip managed fields when comparing changes.")
 
 	return cmd
 }
