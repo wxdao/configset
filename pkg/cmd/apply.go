@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"log"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/wxdao/configset/pkg/configset"
@@ -90,14 +90,15 @@ func NewApplyCmd(configFlags *genericclioptions.ConfigFlags) *cobra.Command {
 				ForceConflicts: forceConflictsFlag,
 				LogObjectFunc: func(obj configset.Object, action configset.LogObjectAction, err error) {
 					gvk := obj.GetObjectKind().GroupVersionKind()
-					apiVersion := gvk.Group + "/" + gvk.Version
-					if gvk.Group == "" {
-						apiVersion = gvk.Version
+					kind := strings.ToLower(gvk.Kind)
+					if gvk.Group != "" {
+						kind = kind + "." + strings.ToLower(gvk.Group)
 					}
-					if err == nil {
-						err = fmt.Errorf("ok")
+					errStr := ""
+					if err != nil {
+						errStr = fmt.Sprintf(" - error: %s", err.Error())
 					}
-					log.Printf("%s: ns=%s name=%s apiVersion=%s kind=%s: %v", action, obj.GetNamespace(), obj.GetName(), apiVersion, gvk.Kind, err)
+					fmt.Fprintf(c.OutOrStdout(), "%s: %s/%s%s\n", action, kind, obj.GetName(), errStr)
 				},
 			})
 			if err != nil {
