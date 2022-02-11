@@ -53,15 +53,16 @@ func (c *Client) Store() SetInfoStore {
 
 // common types
 
-type LogObjectAction string
+type ObjectAction string
 
 const (
-	LogObjectActionUpdate LogObjectAction = "update"
-	LogObjectActionDelete LogObjectAction = "delete"
+	ObjectActionUpdate    ObjectAction = "update"
+	LogObjectActionDelete ObjectAction = "delete"
 )
 
 type ObjectResult struct {
-	Error error
+	Action ObjectAction
+	Error  error
 
 	Config  Object
 	Live    Object
@@ -75,9 +76,9 @@ var (
 // apply
 
 type ApplyOptions struct {
-	DryRun         bool
-	ForceConflicts bool
-	LogObjectFunc  func(obj Object, action LogObjectAction, err error)
+	DryRun              bool
+	ForceConflicts      bool
+	LogObjectResultFunc func(ObjectResult)
 }
 
 type ApplyResult struct {
@@ -87,8 +88,8 @@ type ApplyResult struct {
 func (c *Client) Apply(ctx context.Context, name string, objs []Object, opt ApplyOptions) (ApplyResult, error) {
 	var res ApplyResult
 
-	if opt.LogObjectFunc == nil {
-		opt.LogObjectFunc = func(obj Object, action LogObjectAction, err error) {}
+	if opt.LogObjectResultFunc == nil {
+		opt.LogObjectResultFunc = func(or ObjectResult) {}
 	}
 
 	updatedSetInfo := &SetInfo{
@@ -106,6 +107,7 @@ func (c *Client) Apply(ctx context.Context, name string, objs []Object, opt Appl
 	hasErrors := false
 	for _, obj := range objs {
 		objRes := ObjectResult{
+			Action: ObjectActionUpdate,
 			Config: obj.DeepCopyObject().(Object),
 		}
 
@@ -118,7 +120,7 @@ func (c *Client) Apply(ctx context.Context, name string, objs []Object, opt Appl
 			hasErrors = true
 			objRes.Error = fmt.Errorf("failed to get live object: %w", err)
 			res.ObjectResults = append(res.ObjectResults, objRes)
-			opt.LogObjectFunc(obj, LogObjectActionUpdate, objRes.Error)
+			opt.LogObjectResultFunc(objRes)
 			continue
 		} else {
 			objRes.Live = &liveObj
@@ -128,7 +130,7 @@ func (c *Client) Apply(ctx context.Context, name string, objs []Object, opt Appl
 			hasErrors = true
 			objRes.Error = fmt.Errorf("failed to apply object: %w", err)
 			res.ObjectResults = append(res.ObjectResults, objRes)
-			opt.LogObjectFunc(obj, LogObjectActionUpdate, objRes.Error)
+			opt.LogObjectResultFunc(objRes)
 			continue
 		}
 		objRes.Updated = obj
@@ -147,7 +149,7 @@ func (c *Client) Apply(ctx context.Context, name string, objs []Object, opt Appl
 			UID:        string(obj.GetUID()),
 		})
 		updatedUIDs[string(obj.GetUID())] = struct{}{}
-		opt.LogObjectFunc(obj, LogObjectActionUpdate, nil)
+		opt.LogObjectResultFunc(objRes)
 	}
 
 	liveSetInfo, err := c.store.GetSetInfo(ctx, name)
@@ -185,6 +187,7 @@ func (c *Client) Apply(ctx context.Context, name string, objs []Object, opt Appl
 		obj.SetName(info.Name)
 
 		objRes := ObjectResult{
+			Action: LogObjectActionDelete,
 			Config: obj.DeepCopy(),
 		}
 
@@ -198,7 +201,7 @@ func (c *Client) Apply(ctx context.Context, name string, objs []Object, opt Appl
 			hasErrors = true
 			objRes.Error = fmt.Errorf("failed to get live object: %w", err)
 			res.ObjectResults = append(res.ObjectResults, objRes)
-			opt.LogObjectFunc(&liveObj, LogObjectActionDelete, objRes.Error)
+			opt.LogObjectResultFunc(objRes)
 			continue
 		} else {
 			objRes.Live = &liveObj
@@ -208,12 +211,12 @@ func (c *Client) Apply(ctx context.Context, name string, objs []Object, opt Appl
 			hasErrors = true
 			objRes.Error = fmt.Errorf("failed to delete object: %w", err)
 			res.ObjectResults = append(res.ObjectResults, objRes)
-			opt.LogObjectFunc(&obj, LogObjectActionDelete, objRes.Error)
+			opt.LogObjectResultFunc(objRes)
 			continue
 		}
 		objRes.Updated = nil
 		res.ObjectResults = append(res.ObjectResults, objRes)
-		opt.LogObjectFunc(&obj, LogObjectActionDelete, nil)
+		opt.LogObjectResultFunc(objRes)
 	}
 
 	if hasErrors {
@@ -238,8 +241,8 @@ func (c *Client) Apply(ctx context.Context, name string, objs []Object, opt Appl
 // delete
 
 type DeleteOptions struct {
-	DryRun        bool
-	LogObjectFunc func(obj Object, action LogObjectAction, err error)
+	DryRun              bool
+	LogObjectResultFunc func(ObjectResult)
 }
 
 type DeleteResult struct {
@@ -273,6 +276,7 @@ func (c *Client) Delete(ctx context.Context, name string, opt DeleteOptions) (De
 		obj.SetName(info.Name)
 
 		objRes := ObjectResult{
+			Action: LogObjectActionDelete,
 			Config: obj.DeepCopy(),
 		}
 
@@ -286,7 +290,7 @@ func (c *Client) Delete(ctx context.Context, name string, opt DeleteOptions) (De
 			hasErrors = true
 			objRes.Error = fmt.Errorf("failed to get live object: %w", err)
 			res.ObjectResults = append(res.ObjectResults, objRes)
-			opt.LogObjectFunc(&liveObj, LogObjectActionDelete, objRes.Error)
+			opt.LogObjectResultFunc(objRes)
 			continue
 		} else {
 			objRes.Live = &liveObj
@@ -296,12 +300,12 @@ func (c *Client) Delete(ctx context.Context, name string, opt DeleteOptions) (De
 			hasErrors = true
 			objRes.Error = fmt.Errorf("failed to delete object: %w", err)
 			res.ObjectResults = append(res.ObjectResults, objRes)
-			opt.LogObjectFunc(&obj, LogObjectActionDelete, objRes.Error)
+			opt.LogObjectResultFunc(objRes)
 			continue
 		}
 		objRes.Updated = nil
 		res.ObjectResults = append(res.ObjectResults, objRes)
-		opt.LogObjectFunc(&obj, LogObjectActionDelete, nil)
+		opt.LogObjectResultFunc(objRes)
 	}
 
 	if !hasErrors && !opt.DryRun {

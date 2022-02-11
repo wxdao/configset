@@ -88,17 +88,17 @@ func NewApplyCmd(configFlags *genericclioptions.ConfigFlags) *cobra.Command {
 			res, err := cli.Apply(c.Context(), setName, objs, configset.ApplyOptions{
 				DryRun:         dryRunFlag,
 				ForceConflicts: forceConflictsFlag,
-				LogObjectFunc: func(obj configset.Object, action configset.LogObjectAction, err error) {
-					gvk := obj.GetObjectKind().GroupVersionKind()
+				LogObjectResultFunc: func(objRes configset.ObjectResult) {
+					gvk := objRes.Config.GetObjectKind().GroupVersionKind()
 					kind := strings.ToLower(gvk.Kind)
 					if gvk.Group != "" {
 						kind = kind + "." + strings.ToLower(gvk.Group)
 					}
 					errStr := ""
-					if err != nil {
-						errStr = fmt.Sprintf(" - error: %s", err.Error())
+					if objRes.Error != nil {
+						errStr = fmt.Sprintf(" - error: %s", objRes.Error.Error())
 					}
-					fmt.Fprintf(c.OutOrStdout(), "%s: %s/%s%s\n", action, kind, obj.GetName(), errStr)
+					fmt.Fprintf(c.OutOrStdout(), "%s: %s/%s%s\n", objRes.Action, kind, objRes.Config.GetName(), errStr)
 				},
 			})
 			if err != nil {
