@@ -47,6 +47,10 @@ func NewClient(opt ClientOptions) (*Client, error) {
 	}, nil
 }
 
+func (c *Client) Store() SetInfoStore {
+	return c.store
+}
+
 // common types
 
 type LogObjectAction string
