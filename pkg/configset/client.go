@@ -63,6 +63,7 @@ const (
 type ObjectResult struct {
 	Error error
 
+	Config  Object
 	Live    Object
 	Updated Object
 }
@@ -104,7 +105,9 @@ func (c *Client) Apply(ctx context.Context, name string, objs []Object, opt Appl
 	}
 	hasErrors := false
 	for _, obj := range objs {
-		objRes := ObjectResult{}
+		objRes := ObjectResult{
+			Config: obj.DeepCopyObject().(Object),
+		}
 
 		var liveObj unstructured.Unstructured
 		liveObj.SetGroupVersionKind(obj.GetObjectKind().GroupVersionKind())
@@ -175,7 +178,16 @@ func (c *Client) Apply(ctx context.Context, name string, objs []Object, opt Appl
 	for i := len(toPrune) - 1; i >= 0; i-- {
 		info := toPrune[i]
 
-		objRes := ObjectResult{}
+		obj := unstructured.Unstructured{}
+		obj.SetAPIVersion(info.APIVersion)
+		obj.SetKind(info.Kind)
+		obj.SetNamespace(info.Namespace)
+		obj.SetName(info.Name)
+
+		objRes := ObjectResult{
+			Config: obj.DeepCopy(),
+		}
+
 		var liveObj unstructured.Unstructured
 		liveObj.SetAPIVersion(info.APIVersion)
 		liveObj.SetKind(info.Kind)
@@ -192,11 +204,6 @@ func (c *Client) Apply(ctx context.Context, name string, objs []Object, opt Appl
 			objRes.Live = &liveObj
 		}
 
-		obj := unstructured.Unstructured{}
-		obj.SetAPIVersion(info.APIVersion)
-		obj.SetKind(info.Kind)
-		obj.SetNamespace(info.Namespace)
-		obj.SetName(info.Name)
 		if err := crclient.IgnoreNotFound(c.kube.Delete(ctx, &obj, deleteOpts...)); err != nil {
 			hasErrors = true
 			objRes.Error = fmt.Errorf("failed to delete object: %w", err)
@@ -259,7 +266,16 @@ func (c *Client) Delete(ctx context.Context, name string, opt DeleteOptions) (De
 	for i := len(liveSetInfo.Resources) - 1; i >= 0; i-- {
 		info := liveSetInfo.Resources[i]
 
-		objRes := ObjectResult{}
+		obj := unstructured.Unstructured{}
+		obj.SetAPIVersion(info.APIVersion)
+		obj.SetKind(info.Kind)
+		obj.SetNamespace(info.Namespace)
+		obj.SetName(info.Name)
+
+		objRes := ObjectResult{
+			Config: obj.DeepCopy(),
+		}
+
 		var liveObj unstructured.Unstructured
 		liveObj.SetAPIVersion(info.APIVersion)
 		liveObj.SetKind(info.Kind)
@@ -276,11 +292,6 @@ func (c *Client) Delete(ctx context.Context, name string, opt DeleteOptions) (De
 			objRes.Live = &liveObj
 		}
 
-		obj := unstructured.Unstructured{}
-		obj.SetAPIVersion(info.APIVersion)
-		obj.SetKind(info.Kind)
-		obj.SetNamespace(info.Namespace)
-		obj.SetName(info.Name)
 		if err := crclient.IgnoreNotFound(c.kube.Delete(ctx, &obj, deleteOpts...)); err != nil {
 			hasErrors = true
 			objRes.Error = fmt.Errorf("failed to delete object: %w", err)
@@ -300,6 +311,7 @@ func (c *Client) Delete(ctx context.Context, name string, opt DeleteOptions) (De
 	}
 
 	if hasErrors {
+
 		return res, ErrFailedToOperateSomeResources
 	}
 
