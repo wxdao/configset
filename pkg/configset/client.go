@@ -192,11 +192,14 @@ func (c *Client) Apply(ctx context.Context, name string, objs []Object, opt Appl
 		err := c.kube.Get(ctx, types.NamespacedName{Namespace: info.Namespace, Name: info.Name}, &liveObj)
 		if apierrors.IsNotFound(err) {
 			objRes.Live = nil
+			continue
 		} else if err != nil {
 			hasErrors = true
 			objRes.Error = fmt.Errorf("failed to get live object: %w", err)
 			res.ObjectResults = append(res.ObjectResults, objRes)
 			opt.LogObjectResultFunc(objRes)
+			continue
+		} else if string(liveObj.GetUID()) != info.UID {
 			continue
 		} else {
 			objRes.Live = &liveObj
