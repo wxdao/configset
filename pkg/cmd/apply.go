@@ -25,13 +25,11 @@ func NewApplyCmd(configFlags *genericclioptions.ConfigFlags) *cobra.Command {
 	stripManagedFieldsFlag := false
 
 	cmd := &cobra.Command{
-		Use:          "apply",
+		Use:          "apply <name>",
 		Short:        "Apply a config set to Kubernetes.",
 		SilenceUsage: true,
+		Args:         cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return fmt.Errorf("must specify a config set name")
-			}
 			setName := args[0]
 
 			if diffFlag {

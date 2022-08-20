@@ -16,13 +16,11 @@ func NewDeleteCmd(configFlags *genericclioptions.ConfigFlags) *cobra.Command {
 	stripManagedFieldsFlag := false
 
 	cmd := &cobra.Command{
-		Use:          "delete",
+		Use:          "delete <name>",
 		Short:        "Delete a config set from Kubernetes.",
 		SilenceUsage: true,
+		Args:         cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return fmt.Errorf("must specify a config set name")
-			}
 			setName := args[0]
 
 			if diffFlag {

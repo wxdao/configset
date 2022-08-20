@@ -14,10 +14,8 @@ func NewDescribeCmd(configFlags *genericclioptions.ConfigFlags) *cobra.Command {
 		Use:          "describe",
 		Short:        "Describe a config set from Kubernetes.",
 		SilenceUsage: true,
+		Args:         cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return fmt.Errorf("must specify a config set name")
-			}
 			setName := args[0]
 
 			restConfig, err := configFlags.ToRESTConfig()
