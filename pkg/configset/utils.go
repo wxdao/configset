@@ -11,6 +11,7 @@ import (
 type AddObjectResultsToDifferOptions struct {
 	Prefix             string
 	StripManagedFields bool
+	StripGeneration    bool
 }
 
 func AddObjectResultsToDiffer(results []ObjectResult, differ *diffutil.Differ, opt AddObjectResultsToDifferOptions) error {
@@ -40,12 +41,15 @@ func AddObjectResultsToDiffer(results []ObjectResult, differ *diffutil.Differ, o
 
 		if result.Live != nil {
 			obj := result.Live.DeepCopyObject()
+			ac, err := meta.Accessor(obj)
+			if err != nil {
+				return fmt.Errorf("failed to get accessor for object: %w", err)
+			}
 			if opt.StripManagedFields {
-				ac, err := meta.Accessor(obj)
-				if err != nil {
-					return fmt.Errorf("failed to get accessor for object: %w", err)
-				}
 				ac.SetManagedFields(nil)
+			}
+			if opt.StripGeneration {
+				ac.SetGeneration(0)
 			}
 
 			b, err := yaml.Marshal(obj)
@@ -58,12 +62,15 @@ func AddObjectResultsToDiffer(results []ObjectResult, differ *diffutil.Differ, o
 		}
 		if result.Updated != nil {
 			obj := result.Updated.DeepCopyObject()
+			ac, err := meta.Accessor(obj)
+			if err != nil {
+				return fmt.Errorf("failed to get accessor for object: %w", err)
+			}
 			if opt.StripManagedFields {
-				ac, err := meta.Accessor(obj)
-				if err != nil {
-					return fmt.Errorf("failed to get accessor for object: %w", err)
-				}
 				ac.SetManagedFields(nil)
+			}
+			if opt.StripGeneration {
+				ac.SetGeneration(0)
 			}
 
 			b, err := yaml.Marshal(obj)
