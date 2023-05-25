@@ -1,17 +1,22 @@
 package configset
 
 import (
+	"encoding/json"
 	"fmt"
 
+	"github.com/samber/lo"
 	"github.com/wxdao/configset/pkg/diffutil"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/yaml"
 )
 
 type AddObjectResultsToDifferOptions struct {
-	Prefix             string
-	StripManagedFields bool
-	StripGeneration    bool
+	Prefix                                       string
+	StripManagedFields                           bool
+	StripGeneration                              bool
+	FixAutoscalingV2Beta2HorizontalPodAutoscaler bool
 }
 
 func AddObjectResultsToDiffer(results []ObjectResult, differ *diffutil.Differ, opt AddObjectResultsToDifferOptions) error {
@@ -71,6 +76,26 @@ func AddObjectResultsToDiffer(results []ObjectResult, differ *diffutil.Differ, o
 			}
 			if opt.StripGeneration {
 				ac.SetGeneration(0)
+			}
+
+			if opt.FixAutoscalingV2Beta2HorizontalPodAutoscaler && obj.GetObjectKind().GroupVersionKind() == schema.FromAPIVersionAndKind("autoscaling/v2beta2", "HorizontalPodAutoscaler") {
+				un := obj.(*unstructured.Unstructured)
+				uc := un.UnstructuredContent()
+				spec, ok := uc["spec"].(map[string]interface{})
+				if ok {
+					metrics, ok := spec["metrics"].([]interface{})
+					if ok {
+						newMetrics := lo.UniqBy(metrics, func(item interface{}) string {
+							b, _ := json.Marshal(item)
+							return string(b)
+						})
+
+						spec["metrics"] = newMetrics
+						uc["spec"] = spec
+						un.SetUnstructuredContent(uc)
+						obj = un
+					}
+				}
 			}
 
 			b, err := yaml.Marshal(obj)
