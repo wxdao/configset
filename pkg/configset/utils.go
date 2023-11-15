@@ -81,6 +81,9 @@ func AddObjectResultsToDiffer(results []ObjectResult, differ *diffutil.Differ, o
 			if opt.StripGeneration {
 				ac.SetGeneration(0)
 			}
+			if opt.StripResourceVersion {
+				ac.SetResourceVersion("")
+			}
 
 			if opt.FixAutoscalingV2Beta2HorizontalPodAutoscaler && obj.GetObjectKind().GroupVersionKind() == schema.FromAPIVersionAndKind("autoscaling/v2beta2", "HorizontalPodAutoscaler") {
 				un := obj.(*unstructured.Unstructured)
