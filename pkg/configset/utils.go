@@ -16,6 +16,7 @@ type AddObjectResultsToDifferOptions struct {
 	Prefix                                       string
 	StripManagedFields                           bool
 	StripGeneration                              bool
+	StripResourceVersion                         bool
 	FixAutoscalingV2Beta2HorizontalPodAutoscaler bool
 }
 
@@ -55,6 +56,9 @@ func AddObjectResultsToDiffer(results []ObjectResult, differ *diffutil.Differ, o
 			}
 			if opt.StripGeneration {
 				ac.SetGeneration(0)
+			}
+			if opt.StripResourceVersion {
+				ac.SetResourceVersion("")
 			}
 
 			b, err := yaml.Marshal(obj)
