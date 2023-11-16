@@ -17,6 +17,7 @@ type AddObjectResultsToDifferOptions struct {
 	StripManagedFields                           bool
 	StripGeneration                              bool
 	StripResourceVersion                         bool
+	StripStatus                                  bool
 	FixAutoscalingV2Beta2HorizontalPodAutoscaler bool
 }
 
@@ -60,6 +61,13 @@ func AddObjectResultsToDiffer(results []ObjectResult, differ *diffutil.Differ, o
 			if opt.StripResourceVersion {
 				ac.SetResourceVersion("")
 			}
+			if opt.StripStatus {
+				un := obj.(*unstructured.Unstructured)
+				uc := un.UnstructuredContent()
+				delete(uc, "status")
+				un.SetUnstructuredContent(uc)
+				obj = un
+			}
 
 			b, err := yaml.Marshal(obj)
 			if err != nil {
@@ -83,6 +91,13 @@ func AddObjectResultsToDiffer(results []ObjectResult, differ *diffutil.Differ, o
 			}
 			if opt.StripResourceVersion {
 				ac.SetResourceVersion("")
+			}
+			if opt.StripStatus {
+				un := obj.(*unstructured.Unstructured)
+				uc := un.UnstructuredContent()
+				delete(uc, "status")
+				un.SetUnstructuredContent(uc)
+				obj = un
 			}
 
 			if opt.FixAutoscalingV2Beta2HorizontalPodAutoscaler && obj.GetObjectKind().GroupVersionKind() == schema.FromAPIVersionAndKind("autoscaling/v2beta2", "HorizontalPodAutoscaler") {
