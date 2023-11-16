@@ -73,6 +73,7 @@ var (
 type ApplyOptions struct {
 	DryRun              bool
 	ForceConflicts      bool
+	PopulateLiveObjects bool
 	LogObjectResultFunc func(ObjectResult)
 }
 
@@ -106,19 +107,21 @@ func (c *Client) Apply(ctx context.Context, name string, objs []Object, opt Appl
 			Config: obj.DeepCopyObject().(Object),
 		}
 
-		var liveObj unstructured.Unstructured
-		liveObj.SetGroupVersionKind(obj.GetObjectKind().GroupVersionKind())
-		err := c.kube.Get(ctx, types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}, &liveObj)
-		if apierrors.IsNotFound(err) {
-			objRes.Live = nil
-		} else if err != nil {
-			hasErrors = true
-			objRes.Error = fmt.Errorf("failed to get live object: %w", err)
-			res.ObjectResults = append(res.ObjectResults, objRes)
-			opt.LogObjectResultFunc(objRes)
-			continue
-		} else {
-			objRes.Live = &liveObj
+		if opt.PopulateLiveObjects {
+			var liveObj unstructured.Unstructured
+			liveObj.SetGroupVersionKind(obj.GetObjectKind().GroupVersionKind())
+			err := c.kube.Get(ctx, types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}, &liveObj)
+			if apierrors.IsNotFound(err) {
+				objRes.Live = nil
+			} else if err != nil {
+				hasErrors = true
+				objRes.Error = fmt.Errorf("failed to get live object: %w", err)
+				res.ObjectResults = append(res.ObjectResults, objRes)
+				opt.LogObjectResultFunc(objRes)
+				continue
+			} else {
+				objRes.Live = &liveObj
+			}
 		}
 
 		if err := c.kube.Patch(ctx, obj, crclient.Apply, patchOpts...); err != nil {
@@ -186,23 +189,25 @@ func (c *Client) Apply(ctx context.Context, name string, objs []Object, opt Appl
 			Config: obj.DeepCopy(),
 		}
 
-		var liveObj unstructured.Unstructured
-		liveObj.SetAPIVersion(info.APIVersion)
-		liveObj.SetKind(info.Kind)
-		err := c.kube.Get(ctx, types.NamespacedName{Namespace: info.Namespace, Name: info.Name}, &liveObj)
-		if apierrors.IsNotFound(err) {
-			objRes.Live = nil
-			continue
-		} else if err != nil {
-			hasErrors = true
-			objRes.Error = fmt.Errorf("failed to get live object: %w", err)
-			res.ObjectResults = append(res.ObjectResults, objRes)
-			opt.LogObjectResultFunc(objRes)
-			continue
-		} else if string(liveObj.GetUID()) != info.UID {
-			continue
-		} else {
-			objRes.Live = &liveObj
+		if opt.PopulateLiveObjects {
+			var liveObj unstructured.Unstructured
+			liveObj.SetAPIVersion(info.APIVersion)
+			liveObj.SetKind(info.Kind)
+			err := c.kube.Get(ctx, types.NamespacedName{Namespace: info.Namespace, Name: info.Name}, &liveObj)
+			if apierrors.IsNotFound(err) {
+				objRes.Live = nil
+				continue
+			} else if err != nil {
+				hasErrors = true
+				objRes.Error = fmt.Errorf("failed to get live object: %w", err)
+				res.ObjectResults = append(res.ObjectResults, objRes)
+				opt.LogObjectResultFunc(objRes)
+				continue
+			} else if string(liveObj.GetUID()) != info.UID {
+				continue
+			} else {
+				objRes.Live = &liveObj
+			}
 		}
 
 		if err := crclient.IgnoreNotFound(c.kube.Delete(ctx, &obj, deleteOpts...)); err != nil {
@@ -240,6 +245,7 @@ func (c *Client) Apply(ctx context.Context, name string, objs []Object, opt Appl
 
 type DeleteOptions struct {
 	DryRun              bool
+	PopulateLiveObjects bool
 	LogObjectResultFunc func(ObjectResult)
 }
 
@@ -278,20 +284,22 @@ func (c *Client) Delete(ctx context.Context, name string, opt DeleteOptions) (De
 			Config: obj.DeepCopy(),
 		}
 
-		var liveObj unstructured.Unstructured
-		liveObj.SetAPIVersion(info.APIVersion)
-		liveObj.SetKind(info.Kind)
-		err := c.kube.Get(ctx, types.NamespacedName{Namespace: info.Namespace, Name: info.Name}, &liveObj)
-		if apierrors.IsNotFound(err) {
-			objRes.Live = nil
-		} else if err != nil {
-			hasErrors = true
-			objRes.Error = fmt.Errorf("failed to get live object: %w", err)
-			res.ObjectResults = append(res.ObjectResults, objRes)
-			opt.LogObjectResultFunc(objRes)
-			continue
-		} else {
-			objRes.Live = &liveObj
+		if opt.PopulateLiveObjects {
+			var liveObj unstructured.Unstructured
+			liveObj.SetAPIVersion(info.APIVersion)
+			liveObj.SetKind(info.Kind)
+			err := c.kube.Get(ctx, types.NamespacedName{Namespace: info.Namespace, Name: info.Name}, &liveObj)
+			if apierrors.IsNotFound(err) {
+				objRes.Live = nil
+			} else if err != nil {
+				hasErrors = true
+				objRes.Error = fmt.Errorf("failed to get live object: %w", err)
+				res.ObjectResults = append(res.ObjectResults, objRes)
+				opt.LogObjectResultFunc(objRes)
+				continue
+			} else {
+				objRes.Live = &liveObj
+			}
 		}
 
 		if err := crclient.IgnoreNotFound(c.kube.Delete(ctx, &obj, deleteOpts...)); err != nil {
@@ -313,7 +321,6 @@ func (c *Client) Delete(ctx context.Context, name string, opt DeleteOptions) (De
 	}
 
 	if hasErrors {
-
 		return res, ErrFailedToOperateSomeResources
 	}
 
