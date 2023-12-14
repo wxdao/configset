@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
+	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func NewApplyCmd(configFlags *genericclioptions.ConfigFlags) *cobra.Command {
@@ -39,6 +40,11 @@ func NewApplyCmd(configFlags *genericclioptions.ConfigFlags) *cobra.Command {
 			restConfig, err := configFlags.ToRESTConfig()
 			if err != nil {
 				return fmt.Errorf("failed to get rest config: %v", err)
+			}
+
+			kubeClient, err := crclient.New(restConfig, crclient.Options{})
+			if err != nil {
+				return fmt.Errorf("failed to create kube client: %w", err)
 			}
 
 			namespace, enforceNamespace, err := configFlags.ToRawKubeConfigLoader().Namespace()
@@ -71,12 +77,12 @@ func NewApplyCmd(configFlags *genericclioptions.ConfigFlags) *cobra.Command {
 				objs = append(objs, obj)
 			}
 
-			store, err := configset.NewSecretSetInfoStore(restConfig, namespace)
+			store, err := configset.NewSecretSetInfoStore(kubeClient, namespace)
 			if err != nil {
 				return fmt.Errorf("failed to create store: %v", err)
 			}
 
-			cli, err := configset.NewClient(restConfig, store)
+			cli, err := configset.NewClient(kubeClient, store)
 			if err != nil {
 				return fmt.Errorf("failed to create configset client: %v", err)
 			}

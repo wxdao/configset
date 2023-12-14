@@ -9,7 +9,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/rest"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -33,14 +32,9 @@ type SecretSetInfoStore struct {
 
 var _ SetInfoStore = &SecretSetInfoStore{}
 
-func NewSecretSetInfoStore(restConfig *rest.Config, namespace string) (*SecretSetInfoStore, error) {
-	kube, err := crclient.New(restConfig, crclient.Options{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create k8s client: %w", err)
-	}
-
+func NewSecretSetInfoStore(kubeClient crclient.Client, namespace string) (*SecretSetInfoStore, error) {
 	return &SecretSetInfoStore{
-		kube:              kube,
+		kube:              kubeClient,
 		namespace:         namespace,
 		namePrefix:        DefaultSetInfoSecretPrefix,
 		dataKey:           DefaultSetInfoSecretDataKey,

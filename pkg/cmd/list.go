@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/wxdao/configset/pkg/configset"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func NewListCmd(configFlags *genericclioptions.ConfigFlags) *cobra.Command {
@@ -20,12 +21,17 @@ func NewListCmd(configFlags *genericclioptions.ConfigFlags) *cobra.Command {
 				return fmt.Errorf("failed to get rest config: %v", err)
 			}
 
+			kubeClient, err := crclient.New(restConfig, crclient.Options{})
+			if err != nil {
+				return fmt.Errorf("failed to create kube client: %w", err)
+			}
+
 			namespace, _, err := configFlags.ToRawKubeConfigLoader().Namespace()
 			if err != nil {
 				return fmt.Errorf("failed to get namespace: %v", err)
 			}
 
-			store, err := configset.NewSecretSetInfoStore(restConfig, namespace)
+			store, err := configset.NewSecretSetInfoStore(kubeClient, namespace)
 			if err != nil {
 				return fmt.Errorf("failed to create store: %v", err)
 			}

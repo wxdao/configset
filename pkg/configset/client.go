@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/rest"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -29,14 +28,9 @@ type Client struct {
 	fieldOwner string
 }
 
-func NewClient(restConfig *rest.Config, store SetInfoStore) (*Client, error) {
-	kube, err := crclient.New(restConfig, crclient.Options{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create k8s client: %w", err)
-	}
-
+func NewClient(kubeClient crclient.Client, store SetInfoStore) (*Client, error) {
 	return &Client{
-		kube:       kube,
+		kube:       kubeClient,
 		store:      store,
 		fieldOwner: DefaultFieldOwner,
 	}, nil
