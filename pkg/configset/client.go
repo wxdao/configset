@@ -155,20 +155,16 @@ func (c *Client) Apply(ctx context.Context, name string, objs []Object, opt Appl
 	// prune resources
 	updatedSetInfoWithLiveMerged := *updatedSetInfo
 	toPrune := []ResourceInfo{}
-	for _, r := range liveSetInfo.Resources {
-		if _, ok := updatedUIDs[r.UID]; !ok {
-			updatedSetInfoWithLiveMerged.Resources = append(updatedSetInfoWithLiveMerged.Resources, r)
-			if !hasErrors {
-				// not to run prune logic if there were any errors on applying
+	if !hasErrors {
+		// not to run prune logic if there were any errors on applying
+		for _, r := range liveSetInfo.Resources {
+			if _, ok := updatedUIDs[r.UID]; !ok {
+				updatedSetInfoWithLiveMerged.Resources = append(updatedSetInfoWithLiveMerged.Resources, r)
 				toPrune = append(toPrune, r)
 			}
 		}
 	}
 	// prune in reverse order
-	deleteOpts := []crclient.DeleteOption{}
-	if opt.DryRun {
-		deleteOpts = append(deleteOpts, crclient.DryRunAll)
-	}
 	for i := len(toPrune) - 1; i >= 0; i-- {
 		info := toPrune[i]
 
@@ -189,22 +185,31 @@ func (c *Client) Apply(ctx context.Context, name string, objs []Object, opt Appl
 			liveObj.SetKind(info.Kind)
 			err := c.kube.Get(ctx, types.NamespacedName{Namespace: info.Namespace, Name: info.Name}, &liveObj)
 			if apierrors.IsNotFound(err) {
-				objRes.Live = nil
 				continue
-			} else if err != nil {
+			}
+			if err != nil {
 				hasErrors = true
 				objRes.Error = fmt.Errorf("failed to get live object: %w", err)
 				res.ObjectResults = append(res.ObjectResults, objRes)
 				opt.LogObjectResultFunc(objRes)
 				continue
-			} else if string(liveObj.GetUID()) != info.UID {
-				continue
-			} else {
-				objRes.Live = &liveObj
 			}
+			if string(liveObj.GetUID()) != info.UID {
+				continue
+			}
+			objRes.Live = &liveObj
 		}
 
-		if err := crclient.IgnoreNotFound(c.kube.Delete(ctx, &obj, deleteOpts...)); err != nil {
+		deleteOpts := []crclient.DeleteOption{
+			crclient.Preconditions(*metav1.NewUIDPreconditions(info.UID)),
+		}
+		if opt.DryRun {
+			deleteOpts = append(deleteOpts, crclient.DryRunAll)
+		}
+		if err := c.kube.Delete(ctx, &obj, deleteOpts...); err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
 			hasErrors = true
 			objRes.Error = fmt.Errorf("failed to delete object: %w", err)
 			res.ObjectResults = append(res.ObjectResults, objRes)
