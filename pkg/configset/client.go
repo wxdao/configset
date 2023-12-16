@@ -211,7 +211,7 @@ func (c *Client) Apply(ctx context.Context, name string, objs []Object, opt Appl
 				continue
 			}
 			hasErrors = true
-			objRes.Error = fmt.Errorf("failed to delete object: %w", err)
+			objRes.Error = fmt.Errorf("failed to delete object: %v %w", apierrors.ReasonForError(err), err)
 			res.ObjectResults = append(res.ObjectResults, objRes)
 			opt.LogObjectResultFunc(objRes)
 			continue
