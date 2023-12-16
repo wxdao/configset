@@ -207,7 +207,7 @@ func (c *Client) Apply(ctx context.Context, name string, objs []Object, opt Appl
 			deleteOpts = append(deleteOpts, crclient.DryRunAll)
 		}
 		if err := c.kube.Delete(ctx, &obj, deleteOpts...); err != nil {
-			if apierrors.IsNotFound(err) {
+			if apierrors.IsNotFound(err) || apierrors.IsConflict(err) { // ignore not found and conflict (uid preconditions) errors
 				continue
 			}
 			hasErrors = true
